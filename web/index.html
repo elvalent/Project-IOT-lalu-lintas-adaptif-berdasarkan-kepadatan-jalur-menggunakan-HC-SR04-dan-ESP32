@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lalu Lintas Adaptif - Dashboard & Laporan</title>
+<style>
+:root{--bg:#f4f8f9;--card:#fff;--ink:#1b3a47;--mut:#6b7a8a;--teal:#3f8f8f;--amb:#e9a840;--red:#d9534f}
+@media(prefers-color-scheme:dark){:root{--bg:#10212a;--card:#193541;--ink:#e6f1f4;--mut:#9db3bd}}
+@media print{.noprint{display:none}body{background:#fff;color:#000}.card{box-shadow:none;border:1px solid #999}}
+*{box-sizing:border-box}body{margin:0 auto;font-family:system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:16px;max-width:980px}
+h1{font-family:Georgia,serif;margin:0 0 4px}h2{font-family:Georgia,serif;margin:24px 0 8px}.sub{color:var(--mut);margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.card{background:var(--card);border-radius:14px;padding:16px;box-shadow:0 2px 8px #0002}
+.card h3{margin:0 0 8px;font-size:14px;color:var(--mut);font-weight:600}.big{font-size:32px;font-weight:700}
+.bar{height:20px;background:#0002;border-radius:10px;overflow:hidden;margin-top:6px}.bar div{height:100%;width:0;background:var(--teal);transition:.5s}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;color:#fff;font-size:13px;background:var(--mut)}
+.ok{background:var(--teal)}.warn{background:var(--amb)}.bad{background:var(--red)}
+button{border:0;border-radius:10px;padding:9px 12px;margin:4px 4px 0 0;background:var(--teal);color:#fff;font-size:14px;cursor:pointer}
+button.alt{background:var(--amb)}table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:6px;text-align:left;border-bottom:1px solid #0002}label{display:block;margin-top:8px;font-size:13px}
+</style></head><body>
+<h1>🚦 Pengatur Lalu Lintas Adaptif</h1>
+<div class="sub">Koneksi MQTT: <span id="conn" class="pill">menghubungkan…</span> · Mode data: <span id="dmode">-</span> · Database: <span id="dbstatus" class="pill">memeriksa…</span></div>
+
+<div class="grid">
+ <div class="card"><h3>Persimpangan</h3>
+ <svg viewBox="0 0 320 240" style="width:100%;max-width:360px">
+  <rect x="130" y="0" width="60" height="240" fill="#59616e"/><rect x="0" y="90" width="320" height="60" fill="#6a7280"/>
+  <rect x="130" y="90" width="60" height="60" fill="#59616e"/>
+  <text x="160" y="16" text-anchor="middle" font-size="12" fill="#fff">Jalur A</text>
+  <text x="6" y="124" font-size="12" fill="#fff">Jalur B</text>
+  <rect x="198" y="20" width="24" height="62" rx="6" fill="#222"/>
+  <circle id="la0" cx="210" cy="34" r="7"/><circle id="la1" cx="210" cy="51" r="7"/><circle id="la2" cx="210" cy="68" r="7"/>
+  <rect x="96" y="158" width="24" height="62" rx="6" fill="#222"/>
+  <circle id="lb0" cx="108" cy="172" r="7"/><circle id="lb1" cx="108" cy="189" r="7"/><circle id="lb2" cx="108" cy="206" r="7"/>
+  <text x="210" y="96" text-anchor="middle" font-size="11" fill="#fff" id="tA"></text>
+  <text x="108" y="232" text-anchor="middle" font-size="11" fill="#fff" id="tB"></text>
+ </svg></div>
+ <div class="card"><h3>Kepadatan Jalur A (HC-SR04 #1)</h3><div class="big"><span id="dA">--</span>%</div>
+  <div class="bar"><div id="bA"></div></div><div style="margin-top:8px">Status: <span id="sA" class="pill">-</span> · Jarak: <span id="cA">--</span> cm</div>
+  <h3 style="margin-top:16px">Kepadatan Jalur B (HC-SR04 #2)</h3><div class="big"><span id="dB">--</span>%</div>
+  <div class="bar"><div id="bB"></div></div><div style="margin-top:8px">Status: <span id="sB" class="pill">-</span> · Jarak: <span id="cB">--</span> cm</div></div>
+ <div class="card"><h3>Status siklus</h3>
+  <table><tr><td>Mode</td><td><b id="mode">-</b></td></tr><tr><td>Fase</td><td><b id="ph">-</b></td></tr>
+  <tr><td>Sisa waktu fase</td><td><b id="rem">-</b></td></tr>
+  <tr><td>Durasi hijau A berikutnya</td><td><b id="gA">-</b></td></tr><tr><td>Durasi hijau B berikutnya</td><td><b id="gB">-</b></td></tr></table></div>
+ <div class="card noprint"><h3>Kontrol lampu (aktuator)</h3>
+  <button onclick="send('AUTO')">Otomatis</button><button onclick="send('FORCE_A')">Hijau A</button>
+  <button onclick="send('FORCE_B')">Hijau B</button><button class="alt" onclick="send('ALL_RED')">Semua merah</button>
+  <div style="margin-top:10px">Indikator perintah: <span id="ind" class="pill">belum ada</span></div></div>
+ <div class="card noprint" id="sim" style="display:none"><h3>Simulator (mode demo)</h3>
+  <label>Kepadatan A: <b id="vA">20</b>%<input type="range" id="rA" min="0" max="100" value="20" style="width:100%" oninput="simSet()"></label>
+  <label>Kepadatan B: <b id="vB">20</b>%<input type="range" id="rB" min="0" max="100" value="20" style="width:100%" oninput="simSet()"></label>
+  <div class="sub" style="margin:6px 0 0">Geser slider, amati durasi hijau berubah, lalu screenshot untuk laporan.</div></div>
+</div>
+
+<h2>Laporan Output Rangkaian</h2>
+<div class="grid">
+ <div class="card"><h3>Komponen & pin ESP32</h3><table>
+  <tr><th>Komponen</th><th>Fungsi</th><th>Pin</th></tr>
+  <tr><td>HC-SR04 #1</td><td>Kepadatan Jalur A</td><td>TRIG 5, ECHO 18</td></tr>
+  <tr><td>HC-SR04 #2</td><td>Kepadatan Jalur B</td><td>TRIG 19, ECHO 21</td></tr>
+  <tr><td>LED M/K/H Jalur A</td><td>Lampu lalu lintas A</td><td>25, 26, 27</td></tr>
+  <tr><td>LED M/K/H Jalur B</td><td>Lampu lalu lintas B</td><td>23, 22, 4</td></tr>
+  <tr><td>Resistor 220Ω ×6</td><td>Pembatas arus LED</td><td>seri tiap LED</td></tr></table></div>
+ <div class="card"><h3>Logika adaptif</h3><table>
+  <tr><td>Kepadatan</td><td>(200 − jarak) / 200 × 100%</td></tr>
+  <tr><td>Durasi hijau</td><td>5 dtk + 15 dtk × kepadatan (5–20 dtk, dipercepat untuk simulasi)</td></tr>
+  <tr><td>Urutan</td><td>Hijau A → Kuning 2 dtk → Merah semua 1 dtk → Hijau B → …</td></tr>
+  <tr><td>Status</td><td>&lt;35% Lancar · 35–70% Padat · &gt;70% Macet</td></tr>
+  <tr><td>Perintah web</td><td>AUTO / FORCE_A / FORCE_B / ALL_RED, ESP32 balas OK / FAIL</td></tr></table></div>
+</div>
+<h2>Data Sensor Tersimpan di Database</h2>
+<div class="card"><div style="overflow-x:auto"><table><thead><tr><th>Waktu</th><th>Sumber</th><th>Kepadatan A</th><th>Kepadatan B</th><th>Jarak A</th><th>Jarak B</th><th>Fase</th><th>Mode</th></tr></thead><tbody id="readings"><tr><td colspan="8">Memuat data...</td></tr></tbody></table></div></div>
+<h2>Riwayat Perintah Kontrol</h2>
+<div class="card"><div style="overflow-x:auto"><table><thead><tr><th>Waktu</th><th>Perintah</th><th>Hasil</th></tr></thead><tbody id="cmds"><tr><td colspan="3">Memuat data...</td></tr></tbody></table></div></div>
+<div class="card" style="margin-top:12px"><h3>Riwayat aktivitas (tersimpan di database)
+ <span class="noprint"><button class="alt" style="padding:3px 8px;font-size:12px" onclick="csv()">Unduh CSV</button>
+ <button style="padding:3px 8px;font-size:12px" onclick="print()">Cetak / PDF</button>
+ <button class="alt" style="padding:3px 8px;font-size:12px" onclick="clearH()">Hapus</button></span></h3>
+ <table><thead><tr><th>Waktu</th><th>Kejadian</th></tr></thead><tbody id="hist"></tbody></table></div>
+
+<!-- Bundle MQTT dimuat dari server lokal; jika gagal (mis. dibuka via Live Server), pakai CDN. -->
+<script src="/vendor/mqtt.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js';document.head.appendChild(s)"></script>
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lalu Lintas Adaptif - Dashboard & Laporan</title>
+<style>
+:root{--bg:#f4f8f9;--card:#fff;--ink:#1b3a47;--mut:#6b7a8a;--teal:#3f8f8f;--amb:#e9a840;--red:#d9534f}
+@media(prefers-color-scheme:dark){:root{--bg:#10212a;--card:#193541;--ink:#e6f1f4;--mut:#9db3bd}}
+@media print{.noprint{display:none}body{background:#fff;color:#000}.card{box-shadow:none;border:1px solid #999}}
+*{box-sizing:border-box}body{margin:0 auto;font-family:system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:16px;max-width:980px}
+h1{font-family:Georgia,serif;margin:0 0 4px}h2{font-family:Georgia,serif;margin:24px 0 8px}.sub{color:var(--mut);margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.card{background:var(--card);border-radius:14px;padding:16px;box-shadow:0 2px 8px #0002}
+.card h3{margin:0 0 8px;font-size:14px;color:var(--mut);font-weight:600}.big{font-size:32px;font-weight:700}
+.bar{height:20px;background:#0002;border-radius:10px;overflow:hidden;margin-top:6px}.bar div{height:100%;width:0;background:var(--teal);transition:.5s}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;color:#fff;font-size:13px;background:var(--mut)}
+.ok{background:var(--teal)}.warn{background:var(--amb)}.bad{background:var(--red)}
+button{border:0;border-radius:10px;padding:9px 12px;margin:4px 4px 0 0;background:var(--teal);color:#fff;font-size:14px;cursor:pointer}
+button.alt{background:var(--amb)}table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:6px;text-align:left;border-bottom:1px solid #0002}label{display:block;margin-top:8px;font-size:13px}
+</style></head><body>
+<h1>🚦 Pengatur Lalu Lintas Adaptif</h1>
+<div class="sub">Koneksi MQTT: <span id="conn" class="pill">menghubungkan…</span> · Mode data: <span id="dmode">-</span> · Database: <span id="dbstatus" class="pill">memeriksa…</span></div>
+
+<div class="grid">
+ <div class="card"><h3>Persimpangan</h3>
+ <svg viewBox="0 0 320 240" style="width:100%;max-width:360px">
+  <rect x="130" y="0" width="60" height="240" fill="#59616e"/><rect x="0" y="90" width="320" height="60" fill="#6a7280"/>
+  <rect x="130" y="90" width="60" height="60" fill="#59616e"/>
+  <text x="160" y="16" text-anchor="middle" font-size="12" fill="#fff">Jalur A</text>
+  <text x="6" y="124" font-size="12" fill="#fff">Jalur B</text>
+  <rect x="198" y="20" width="24" height="62" rx="6" fill="#222"/>
+  <circle id="la0" cx="210" cy="34" r="7"/><circle id="la1" cx="210" cy="51" r="7"/><circle id="la2" cx="210" cy="68" r="7"/>
+  <rect x="96" y="158" width="24" height="62" rx="6" fill="#222"/>
+  <circle id="lb0" cx="108" cy="172" r="7"/><circle id="lb1" cx="108" cy="189" r="7"/><circle id="lb2" cx="108" cy="206" r="7"/>
+  <text x="210" y="96" text-anchor="middle" font-size="11" fill="#fff" id="tA"></text>
+  <text x="108" y="232" text-anchor="middle" font-size="11" fill="#fff" id="tB"></text>
+ </svg></div>
+ <div class="card"><h3>Kepadatan Jalur A (HC-SR04 #1)</h3><div class="big"><span id="dA">--</span>%</div>
+  <div class="bar"><div id="bA"></div></div><div style="margin-top:8px">Status: <span id="sA" class="pill">-</span> · Jarak: <span id="cA">--</span> cm</div>
+  <h3 style="margin-top:16px">Kepadatan Jalur B (HC-SR04 #2)</h3><div class="big"><span id="dB">--</span>%</div>
+  <div class="bar"><div id="bB"></div></div><div style="margin-top:8px">Status: <span id="sB" class="pill">-</span> · Jarak: <span id="cB">--</span> cm</div></div>
+ <div class="card"><h3>Status siklus</h3>
+  <table><tr><td>Mode</td><td><b id="mode">-</b></td></tr><tr><td>Fase</td><td><b id="ph">-</b></td></tr>
+  <tr><td>Sisa waktu fase</td><td><b id="rem">-</b></td></tr>
+  <tr><td>Durasi hijau A berikutnya</td><td><b id="gA">-</b></td></tr><tr><td>Durasi hijau B berikutnya</td><td><b id="gB">-</b></td></tr></table></div>
+ <div class="card noprint"><h3>Kontrol lampu (aktuator)</h3>
+  <button onclick="send('AUTO')">Otomatis</button><button onclick="send('FORCE_A')">Hijau A</button>
+  <button onclick="send('FORCE_B')">Hijau B</button><button class="alt" onclick="send('ALL_RED')">Semua merah</button>
+  <div style="margin-top:10px">Indikator perintah: <span id="ind" class="pill">belum ada</span></div></div>
+ <div class="card noprint" id="sim" style="display:none"><h3>Simulator (mode demo)</h3>
+  <label>Kepadatan A: <b id="vA">20</b>%<input type="range" id="rA" min="0" max="100" value="20" style="width:100%" oninput="simSet()"></label>
+  <label>Kepadatan B: <b id="vB">20</b>%<input type="range" id="rB" min="0" max="100" value="20" style="width:100%" oninput="simSet()"></label>
+  <div class="sub" style="margin:6px 0 0">Geser slider, amati durasi hijau berubah, lalu screenshot untuk laporan.</div></div>
+</div>
+
+<h2>Laporan Output Rangkaian</h2>
+<div class="grid">
+ <div class="card"><h3>Komponen & pin ESP32</h3><table>
+  <tr><th>Komponen</th><th>Fungsi</th><th>Pin</th></tr>
+  <tr><td>HC-SR04 #1</td><td>Kepadatan Jalur A</td><td>TRIG 5, ECHO 18</td></tr>
+  <tr><td>HC-SR04 #2</td><td>Kepadatan Jalur B</td><td>TRIG 19, ECHO 21</td></tr>
+  <tr><td>LED M/K/H Jalur A</td><td>Lampu lalu lintas A</td><td>25, 26, 27</td></tr>
+  <tr><td>LED M/K/H Jalur B</td><td>Lampu lalu lintas B</td><td>23, 22, 4</td></tr>
+  <tr><td>Resistor 220Ω ×6</td><td>Pembatas arus LED</td><td>seri tiap LED</td></tr></table></div>
+ <div class="card"><h3>Logika adaptif</h3><table>
+  <tr><td>Kepadatan</td><td>(200 − jarak) / 200 × 100%</td></tr>
+  <tr><td>Durasi hijau</td><td>5 dtk + 15 dtk × kepadatan (5–20 dtk, dipercepat untuk simulasi)</td></tr>
+  <tr><td>Urutan</td><td>Hijau A → Kuning 2 dtk → Merah semua 1 dtk → Hijau B → …</td></tr>
+  <tr><td>Status</td><td>&lt;35% Lancar · 35–70% Padat · &gt;70% Macet</td></tr>
+  <tr><td>Perintah web</td><td>AUTO / FORCE_A / FORCE_B / ALL_RED, ESP32 balas OK / FAIL</td></tr></table></div>
+</div>
+<h2>Data Sensor Tersimpan di Database</h2>
+<div class="card"><div style="overflow-x:auto"><table><thead><tr><th>Waktu</th><th>Sumber</th><th>Kepadatan A</th><th>Kepadatan B</th><th>Jarak A</th><th>Jarak B</th><th>Fase</th><th>Mode</th></tr></thead><tbody id="readings"><tr><td colspan="8">Memuat data...</td></tr></tbody></table></div></div>
+<h2>Riwayat Perintah Kontrol</h2>
+<div class="card"><div style="overflow-x:auto"><table><thead><tr><th>Waktu</th><th>Perintah</th><th>Hasil</th></tr></thead><tbody id="cmds"><tr><td colspan="3">Memuat data...</td></tr></tbody></table></div></div>
+<div class="card" style="margin-top:12px"><h3>Riwayat aktivitas (tersimpan di database)
+ <span class="noprint"><button class="alt" style="padding:3px 8px;font-size:12px" onclick="csv()">Unduh CSV</button>
+ <button style="padding:3px 8px;font-size:12px" onclick="print()">Cetak / PDF</button>
+ <button class="alt" style="padding:3px 8px;font-size:12px" onclick="clearH()">Hapus</button></span></h3>
+ <table><thead><tr><th>Waktu</th><th>Kejadian</th></tr></thead><tbody id="hist"></tbody></table></div>
+
+<!-- Bundle MQTT dimuat dari server lokal; jika gagal (mis. dibuka via Live Server), pakai CDN. -->
+<script src="/vendor/mqtt.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js';document.head.appendChild(s)"></script>
+<script>
+
+const P='lalin-adaptif-kiel-2026-7f3a/';
+const $=id=>document.getElementById(id);
+
+const MIN_G=5, MAX_G=20, RANGE=200;
+
+const PH=[
+ 'Hijau Jalur A',
+ 'Kuning Jalur A',
+ 'Merah semua',
+ 'Hijau Jalur B',
+ 'Kuning Jalur B',
+ 'Merah semua'
+];
+
+const COL=['#d9534f','#e9c840','#3fb06f'];
+
+let d={
+ dA:20,dB:20,
+ cA:160,cB:160,
+ ph:0,sA:2,sB:0,
+ rem:8,mode:'AUTO'
+};
+
+const gt=x=>Math.round(
+ MIN_G+(MAX_G-MIN_G)*Math.max(0,Math.min(100,x))/100
+);
+
+const DUR=()=>[
+ gt(d.dA),2,1,gt(d.dB),2,1
+];
+
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({
+ '&':'&amp;','<':'&lt;','>':'&gt;',
+ '"':'&quot;',"'":'&#39;'
+}[c]));
+
+let hist=[];
+try{
+ hist=JSON.parse(localStorage.getItem('lalin_hist')||'[]');
+}catch(e){}
+
+let client=null;
+let API=null;
+let demo=false;
+let simulatorOverride=false;
+let lastMqttAt=0;
+let pending=null;
+let lastPh=-1;
+let lastSA='';
+let lastSB='';
+let lastGreen=1;
+
+// ===================================
+// PRIORITAS JALUR
+// ===================================
+
+function chooseDemoGreen(){
+
+ if(d.dA>d.dB){
+  setPh(0);
+ }
+ else if(d.dB>d.dA){
+  setPh(3);
+ }
+ else{
+  setPh(lastGreen?3:0);
+ }
+}
+
+function setPh(p){
+
+ d.ph=p;
+ d.rem=DUR()[p];
+
+ d.sA=[2,1,0,0,0,0][p];
+ d.sB=[0,0,0,2,1,0][p];
+
+ if(p===0)lastGreen=1;
+ if(p===3)lastGreen=0;
+}
+
+// ===================================
+// TAMPILAN SIMULATOR
+// ===================================
+
+// Simulator selalu tampil
+$('sim').style.display='block';
+
+// Tambahkan tombol kembali ke ESP32
+const simControls=document.createElement('div');
+
+simControls.style.marginTop='12px';
+
+simControls.innerHTML=`
+ <div style="margin-bottom:8px">
+  <span id="simStatus" class="pill ok">
+   Simulator siap
+  </span>
+ </div>
+ <button id="liveBtn" type="button">
+  Gunakan Sensor ESP32
+ </button>
+`;
+
+$('sim').appendChild(simControls);
+
+function simStatus(text,type='ok'){
+ const el=$('simStatus');
+ el.textContent=text;
+ el.className='pill '+type;
+}
+
+// ===================================
+// DATABASE SQLITE / API
+// ===================================
+
+async function findApi(){
+
+ for(const base of [
+  '',
+  'http://localhost:3000'
+ ]){
+
+  try{
+   const r=await fetch(base+'/api/health',{
+    cache:'no-store'
+   });
+
+   if(r.ok&&(await r.json()).ok){
+    return base;
+   }
+
+  }catch(e){}
+ }
+
+ return null;
+}
+
+async function apiPost(url,data){
+
+ if(API===null)return;
+
+ try{
+
+  await fetch(API+url,{
+   method:'POST',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify(data)
+  });
+
+ }catch(e){
+
+  API=null;
+  console.warn('API tidak terjangkau',e);
+
+ }
+}
+
+function save(){
+
+ try{
+  localStorage.setItem(
+   'lalin_hist',
+   JSON.stringify(hist)
+  );
+ }catch(e){}
+}
+
+function pill(id,text,type){
+
+ const el=$(id);
+
+ el.textContent=text;
+ el.className='pill '+type;
+}
+
+async function refreshDb(){
+
+ if(API===null){
+  API=await findApi();
+ }
+
+ if(API===null){
+
+  pill(
+   'dbstatus',
+   'Tidak terhubung (jalankan npm start)',
+   'bad'
+  );
+
+  $('readings').innerHTML=
+   '<tr><td colspan="8">Database belum terhubung</td></tr>';
+
+  $('cmds').innerHTML=
+   '<tr><td colspan="3">Database belum terhubung</td></tr>';
+
+  return;
+ }
+
+ try{
+
+  const [h,k]=await Promise.all([
+
+   fetch(API+'/api/health').then(r=>r.json()),
+
+   fetch(API+'/api/history').then(r=>r.json())
+
+  ]);
+
+  pill(
+   'dbstatus',
+   h.database+' aktif'+
+   (h.mqttConnected?' · server MQTT ok':' · server MQTT putus'),
+   'ok'
+  );
+
+  if(k.activities){
+
+   hist=k.activities.map(x=>({
+    w:x.time,
+    t:x.text
+   }));
+
+   renderHist();
+  }
+
+  $('readings').innerHTML=
+   (k.readings||[]).map(r=>`
+    <tr>
+     <td>${esc(r.time)}</td>
+     <td>${esc(r.source)}</td>
+     <td>${esc(r.density_a)}%</td>
+     <td>${esc(r.density_b)}%</td>
+     <td>${esc(r.distance_a)} cm</td>
+     <td>${esc(r.distance_b)} cm</td>
+     <td>${esc(r.phase??'-')}</td>
+     <td>${esc(r.mode??'-')}</td>
+    </tr>
+   `).join('')||
+   '<tr><td colspan="8">Belum ada pembacaan sensor</td></tr>';
+
+  $('cmds').innerHTML=
+   (k.commands||[]).map(r=>`
+    <tr>
+     <td>${esc(r.time)}</td>
+     <td>${esc(r.command)}</td>
+     <td>${esc(r.result)}</td>
+    </tr>
+   `).join('')||
+   '<tr><td colspan="3">Belum ada perintah</td></tr>';
+
+ }catch(e){
+
+  API=null;
+  pill('dbstatus','Tidak terhubung','bad');
+
+ }
+}
+
+function csv(){
+ window.open((API||'')+'/api/readings.csv','_blank');
+}
+
+async function clearH(){
+
+ hist=[];
+ save();
+ renderHist();
+
+ if(API!==null){
+
+  try{
+   await fetch(API+'/api/activity',{
+    method:'DELETE'
+   });
+  }catch(e){}
+
+ }
+}
+
+// ===================================
+// RENDER DASHBOARD
+// ===================================
+
+const st=x=>
+ x<35?['Lancar','ok']:
+ x<70?['Padat','warn']:
+ ['Macet','bad'];
+
+function lamps(r,s){
+
+ for(let i=0;i<3;i++){
+
+  $('l'+r+i).setAttribute(
+   'fill',
+   i===s?COL[i]:'#3a3a3a'
+  );
+
+ }
+}
+
+function renderHist(){
+
+ $('hist').innerHTML=
+  hist.map(h=>`
+   <tr>
+    <td>${esc(h.w)}</td>
+    <td>${esc(h.t)}</td>
+   </tr>
+  `).join('')||
+  '<tr><td colspan=2>Belum ada data</td></tr>';
+
+}
+
+function render(){
+
+ // Lampu persimpangan
+ lamps('a',d.sA);
+ lamps('b',d.sB);
+
+ $('tA').textContent=
+  d.mode==='AUTO'&&d.sA===2?d.rem+' dtk':'';
+
+ $('tB').textContent=
+  d.mode==='AUTO'&&d.sB===2?d.rem+' dtk':'';
+
+ // Kepadatan dan status
+ for(const r of ['A','B']){
+
+  const x=Math.max(
+   0,Math.min(100,Number(d['d'+r])||0)
+  );
+
+  const s=st(x);
+
+  $('d'+r).textContent=x;
+  $('c'+r).textContent=d['c'+r];
+
+  $('b'+r).style.width=x+'%';
+
+  $('b'+r).style.background=
+   x>=70?'var(--red)':
+   x>=35?'var(--amb)':
+   'var(--teal)';
+
+  pill('s'+r,s[0],s[1]);
+
+ }
+
+ // Slider selalu mengikuti nilai terbaru.
+ // Saat user menggeser slider, nilainya juga diperbarui.
+
+ $('rA').value=d.dA;
+ $('rB').value=d.dB;
+
+ $('vA').textContent=d.dA;
+ $('vB').textContent=d.dB;
+
+ // Informasi fase
+ $('mode').textContent=d.mode;
+
+ $('ph').textContent=
+  d.mode==='AUTO'?PH[d.ph]:'Manual';
+
+ $('rem').textContent=
+  d.mode==='AUTO'?d.rem+' dtk':'-';
+
+ // Durasi hijau berikutnya
+ $('gA').textContent=gt(d.dA)+' dtk';
+ $('gB').textContent=gt(d.dB)+' dtk';
+
+}
+
+// ===================================
+// RIWAYAT AKTIVITAS
+// ===================================
+
+function log(t){
+
+ hist.unshift({
+  w:new Date().toLocaleString('id-ID'),
+  t
+ });
+
+ hist=hist.slice(0,100);
+
+ save();
+
+ apiPost('/api/activity',{
+  event:t
+ });
+
+ renderHist();
+}
+
+function detect(){
+
+ if(
+  d.mode==='AUTO'&&
+  d.ph!==lastPh&&
+  (d.ph===0||d.ph===3)
+ ){
+
+  const r=d.ph?'B':'A';
+
+  log(
+   `${PH[d.ph]} menyala (kepadatan ${d['d'+r]}%, durasi ${gt(d['d'+r])} dtk)`
+  );
+
+ }
+
+ lastPh=d.ph;
+
+ const a=st(d.dA)[0];
+ const b=st(d.dB)[0];
+
+ if(lastSA&&a!==lastSA){
+  log('Jalur A: '+a+' ('+d.dA+'%)');
+ }
+
+ if(lastSB&&b!==lastSB){
+  log('Jalur B: '+b+' ('+d.dB+'%)');
+ }
+
+ lastSA=a;
+ lastSB=b;
+}
+
+function update(){
+
+ render();
+ detect();
+
+}
+
+// ===================================
+// SIMULATOR MANUAL + OTOMATIS
+// ===================================
+
+function simSet(){
+
+ // User mengatur kepadatan sendiri
+ simulatorOverride=true;
+ demo=true;
+
+ // Mode otomatis tetap berjalan
+ d.mode='AUTO';
+
+ d.dA=Number($('rA').value);
+ d.dB=Number($('rB').value);
+
+ d.cA=Math.round(
+  RANGE*(1-d.dA/100)
+ );
+
+ d.cB=Math.round(
+  RANGE*(1-d.dB/100)
+ );
+
+ $('dmode').textContent=
+  'Simulator manual + otomatis';
+
+ simStatus(
+  'Manual + Otomatis Aktif',
+  'ok'
+ );
+
+ // Perbarui semua tampilan
+ update();
+
+ apiPost('/api/telemetry',d);
+
+}
+
+// Kembali mengikuti sensor ESP32
+
+function useLiveSensor(){
+
+ simulatorOverride=false;
+
+ if(
+  lastMqttAt&&
+  Date.now()-lastMqttAt<6000
+ ){
+
+  demo=false;
+
+  $('dmode').textContent='Live MQTT (ESP32)';
+
+  simStatus('Mengikuti Sensor ESP32','ok');
+
+  pill('conn','Terhubung MQTT','ok');
+
+ }else{
+
+  demo=true;
+
+  $('dmode').textContent=
+   'Simulasi otomatis (ESP32 belum terdeteksi)';
+
+  simStatus('Mode Simulasi Otomatis','warn');
+
+  pill('conn','Simulasi otomatis','warn');
+
+ }
+
+}
+
+$('liveBtn').addEventListener(
+ 'click',
+ useLiveSensor
+);
+
+// ===================================
+// MESIN KEPADATAN OTOMATIS
+// ===================================
+
+setInterval(()=>{
+
+ if(!demo)return;
+
+ if(d.mode==='AUTO'){
+
+  // JALUR A
+  if(d.ph===0){
+
+   // Lampu hijau: antrean berkurang
+   d.dA-=2;
+
+  }else{
+
+   // Lampu merah/kuning: antrean bertambah
+   d.dA+=1;
+
+  }
+
+  // JALUR B
+  if(d.ph===3){
+
+   // Lampu hijau: antrean berkurang
+   d.dB-=2;
+
+  }else{
+
+   // Lampu merah/kuning: antrean bertambah
+   d.dB+=1;
+
+  }
+
+  // Batasi nilai 0 sampai 100
+  d.dA=Math.max(0,Math.min(100,d.dA));
+  d.dB=Math.max(0,Math.min(100,d.dB));
+
+  // Estimasi jarak
+  d.cA=Math.round(
+   RANGE*(1-d.dA/100)
+  );
+
+  d.cB=Math.round(
+   RANGE*(1-d.dB/100)
+  );
+
+  // Hitung mundur
+  d.rem=Math.max(
+   0,(Number(d.rem)||0)-1
+  );
+
+  // Perpindahan fase
+  if(d.rem<=0){
+
+   if(d.ph===0){
+    setPh(1);
+   }
+
+   else if(d.ph===1){
+    setPh(2);
+   }
+
+   else if(d.ph===2){
+    chooseDemoGreen();
+   }
+
+   else if(d.ph===3){
+    setPh(4);
+   }
+
+   else if(d.ph===4){
+    setPh(5);
+   }
+
+   else{
+    chooseDemoGreen();
+   }
+
+  }
+
+ }
+
+ // Update semua komponen
+ update();
+
+ // Simpan data ke database
+ apiPost('/api/telemetry',d);
+
+},1000);
+
+// ===================================
+// MODE DEMO / FALLBACK
+// ===================================
+
+function startDemo(){
+
+ if(demo)return;
+
+ if(simulatorOverride)return;
+
+ if(
+  lastMqttAt&&
+  Date.now()-lastMqttAt<6000
+ )return;
+
+ demo=true;
+
+ d.mode='AUTO';
+
+ $('dmode').textContent=
+  'Simulasi otomatis (ESP32 belum terdeteksi)';
+
+ simStatus('Simulasi Otomatis Aktif','warn');
+
+ pill('conn','Simulasi otomatis','warn');
+
+ chooseDemoGreen();
+
+ update();
+
+}
+
+// ===================================
+// KONTROL LAMPU
+// ===================================
+
+function ack(m){
+
+ clearTimeout(pending);
+
+ const ok=m.startsWith('OK');
+
+ const command=m.slice(
+  m.indexOf(':')+1
+ );
+
+ apiPost('/api/command-result',{
+  command,
+  result:ok?'OK':'FAIL'
+ });
+
+ pill(
+  'ind',
+  ok?'✔ Berhasil ('+command+')':'✖ Gagal ('+command+')',
+  ok?'ok':'bad'
+ );
+
+ log('Perintah '+m);
+
+ setTimeout(refreshDb,300);
+
+}
+
+function applyMode(){
+
+ if(d.mode==='FORCE_A'){
+
+  d.sA=2;
+  d.sB=0;
+
+ }else if(d.mode==='FORCE_B'){
+
+  d.sA=0;
+  d.sB=2;
+
+ }else if(d.mode==='ALL_RED'){
+
+  d.sA=0;
+  d.sB=0;
+
+ }else{
+
+  chooseDemoGreen();
+
+ }
+
+}
+
+function send(c){
+
+ pill('ind','Mengirim…','warn');
+
+ apiPost('/api/command',{
+  command:c
+ });
+
+ if(demo){
+
+  d.mode=c;
+
+  applyMode();
+
+  ack('OK:'+c);
+
+  update();
+
+  return;
+ }
+
+ if(!client||!client.connected){
+
+  pill('ind','✖ Gagal (tidak terhubung)','bad');
+
+  log('Perintah '+c+' gagal: offline');
+
+  return;
+ }
+
+ client.publish(P+'cmd',c);
+
+ pending=setTimeout(()=>{
+
+  pill('ind','✖ Gagal (timeout)','bad');
+
+  log('Perintah '+c+' timeout');
+
+ },4000);
+
+}
+
+// ===================================
+// MQTT
+// ===================================
+
+function initMqtt(tries){
+
+ if(typeof mqtt==='undefined'){
+
+  if(tries<30){
+
+   return setTimeout(
+    ()=>initMqtt(tries+1),
+    500
+   );
+
+  }
+
+  pill('conn','Library MQTT tidak tersedia','bad');
+
+  return;
+ }
+
+ const url='wss://broker.hivemq.com:8884/mqtt';
+
+ function connect(){
+
+  pill('conn','Menghubungkan ke broker…','warn');
+
+  client=mqtt.connect(url,{
+
+   reconnectPeriod:3000,
+   connectTimeout:10000,
+   keepalive:30,
+   clean:true,
+
+   clientId:
+    'lalin-web-'+Math.random().toString(16).slice(2,10)
+
+  });
+
+  client.on('connect',()=>{
+
+   pill('conn','Terhubung ke HiveMQ','ok');
+
+   client.subscribe(
+    [P+'data',P+'ack'],
+    {qos:0},
+    err=>{
+     if(err){
+      console.warn('Subscribe gagal',err.message);
+     }
+    }
+   );
+
+  });
+
+  client.on('reconnect',()=>{
+
+   pill('conn','Menyambungkan ulang…','warn');
+
+  });
+
+  client.on('offline',()=>{
+
+   pill('conn','Broker offline — mencoba ulang','bad');
+
+  });
+
+  client.on('close',()=>{
+
+   pill('conn','Koneksi terputus — mencoba ulang','bad');
+
+  });
+
+  client.on('error',e=>{
+
+   console.warn('MQTT error:',e&&e.message);
+
+   pill('conn','MQTT error — mencoba ulang','bad');
+
+  });
+
+  client.on('message',(topic,message)=>{
+
+   const raw=message.toString();
+
+   if(topic===P+'ack'){
+    return ack(raw);
+   }
+
+   try{
+
+    const o=JSON.parse(raw);
+
+    if(
+     !o||
+     typeof o!=='object'||
+     !('dA' in o)
+    )return;
+
+    // Tandai data sensor masih aktif
+    lastMqttAt=Date.now();
+
+    // Jika user sedang mengatur simulator,
+    // jangan timpa nilai slider dengan MQTT.
+    if(simulatorOverride){
+
+     simStatus(
+      'Manual + Otomatis Aktif',
+      'ok'
+     );
+
+     return;
+    }
+
+    // MQTT aktif: gunakan data ESP32
+    demo=false;
+
+    $('dmode').textContent=
+     'Live MQTT (ESP32)';
+
+    simStatus(
+     'Mengikuti Sensor ESP32',
+     'ok'
+    );
+
+    d={...d,...o};
+
+    update();
+
+   }catch(e){
+
+    console.warn(
+     'Payload MQTT tidak valid',
+     e
+    );
+
+   }
+
+  });
+
+ }
+
+ connect();
+
+}
+
+initMqtt(0);
+
+// ===================================
+// PEMANTAU MQTT OTOMATIS
+// ===================================
+
+// Tunggu ESP32 mengirim data.
+// Jika tidak ada, aktifkan simulator.
+
+setTimeout(()=>{
+
+ if(!lastMqttAt&&!simulatorOverride){
+  startDemo();
+ }
+
+},6000);
+
+// Jika MQTT terputus setelah aktif,
+// kembali ke simulator otomatis.
+
+setInterval(()=>{
+
+ if(simulatorOverride)return;
+
+ if(
+  !lastMqttAt||
+  Date.now()-lastMqttAt>6000
+ ){
+
+  if(!demo){
+   startDemo();
+  }
+
+ }else if(demo){
+
+  demo=false;
+
+ }
+
+},2000);
+
+// ===================================
+// INISIALISASI
+// ===================================
+
+$('sim').style.display='block';
+
+$('dmode').textContent='Menunggu data MQTT';
+
+simStatus('Menunggu Sensor / Simulator','warn');
+
+renderHist();
+render();
+
+refreshDb();
+
+setInterval(refreshDb,5000);
+
+</script>
+</script></body></html>
+

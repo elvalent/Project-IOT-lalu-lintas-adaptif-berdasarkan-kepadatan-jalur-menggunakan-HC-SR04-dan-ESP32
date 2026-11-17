@@ -1,0 +1,369 @@
+{
+ "version": 1,
+ "author": "Lalu Lintas Adaptif",
+ "editor": "wokwi",
+ "parts": [
+  {
+   "type": "wokwi-esp32-devkit-v1",
+   "id": "esp",
+   "top": 0,
+   "left": 0,
+   "attrs": {}
+  },
+  {
+   "type": "wokwi-hc-sr04",
+   "id": "usA",
+   "top": -130,
+   "left": -40,
+   "attrs": {
+    "distance": "160"
+   }
+  },
+  {
+   "type": "wokwi-hc-sr04",
+   "id": "usB",
+   "top": -130,
+   "left": 150,
+   "attrs": {
+    "distance": "160"
+   }
+  },
+  {
+   "type": "wokwi-resistor",
+   "id": "rA0",
+   "top": 230,
+   "left": -60,
+   "attrs": {
+    "value": "220"
+   }
+  },
+  {
+   "type": "wokwi-led",
+   "id": "ledA0",
+   "top": 310,
+   "left": -50,
+   "attrs": {
+    "color": "red",
+    "label": "A-M"
+   }
+  },
+  {
+   "type": "wokwi-resistor",
+   "id": "rA1",
+   "top": 230,
+   "left": -15,
+   "attrs": {
+    "value": "220"
+   }
+  },
+  {
+   "type": "wokwi-led",
+   "id": "ledA1",
+   "top": 310,
+   "left": -5,
+   "attrs": {
+    "color": "yellow",
+    "label": "A-K"
+   }
+  },
+  {
+   "type": "wokwi-resistor",
+   "id": "rA2",
+   "top": 230,
+   "left": 30,
+   "attrs": {
+    "value": "220"
+   }
+  },
+  {
+   "type": "wokwi-led",
+   "id": "ledA2",
+   "top": 310,
+   "left": 40,
+   "attrs": {
+    "color": "green",
+    "label": "A-H"
+   }
+  },
+  {
+   "type": "wokwi-resistor",
+   "id": "rB0",
+   "top": 230,
+   "left": 200,
+   "attrs": {
+    "value": "220"
+   }
+  },
+  {
+   "type": "wokwi-led",
+   "id": "ledB0",
+   "top": 310,
+   "left": 210,
+   "attrs": {
+    "color": "red",
+    "label": "B-M"
+   }
+  },
+  {
+   "type": "wokwi-resistor",
+   "id": "rB1",
+   "top": 230,
+   "left": 245,
+   "attrs": {
+    "value": "220"
+   }
+  },
+  {
+   "type": "wokwi-led",
+   "id": "ledB1",
+   "top": 310,
+   "left": 255,
+   "attrs": {
+    "color": "yellow",
+    "label": "B-K"
+   }
+  },
+  {
+   "type": "wokwi-resistor",
+   "id": "rB2",
+   "top": 230,
+   "left": 290,
+   "attrs": {
+    "value": "220"
+   }
+  },
+  {
+   "type": "wokwi-led",
+   "id": "ledB2",
+   "top": 310,
+   "left": 300,
+   "attrs": {
+    "color": "green",
+    "label": "B-H"
+   }
+  }
+ ],
+ "connections": [
+  [
+   "esp:TX0",
+   "$serialMonitor:RX",
+   "",
+   []
+  ],
+  [
+   "esp:RX0",
+   "$serialMonitor:TX",
+   "",
+   []
+  ],
+  [
+   "usA:VCC",
+   "esp:VIN",
+   "red",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "usA:GND",
+   "esp:GND.1",
+   "black",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "usA:TRIG",
+   "esp:D5",
+   "green",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "usA:ECHO",
+   "esp:D18",
+   "blue",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "usB:VCC",
+   "esp:VIN",
+   "red",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "usB:GND",
+   "esp:GND.1",
+   "black",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "usB:TRIG",
+   "esp:D19",
+   "green",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "usB:ECHO",
+   "esp:D21",
+   "blue",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "esp:D25",
+   "rA0:1",
+   "red",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "rA0:2",
+   "ledA0:A",
+   "red",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "ledA0:C",
+   "esp:GND.1",
+   "black",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "esp:D26",
+   "rA1:1",
+   "yellow",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "rA1:2",
+   "ledA1:A",
+   "yellow",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "ledA1:C",
+   "esp:GND.1",
+   "black",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "esp:D27",
+   "rA2:1",
+   "green",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "rA2:2",
+   "ledA2:A",
+   "green",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "ledA2:C",
+   "esp:GND.1",
+   "black",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "esp:D23",
+   "rB0:1",
+   "red",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "rB0:2",
+   "ledB0:A",
+   "red",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "ledB0:C",
+   "esp:GND.1",
+   "black",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "esp:D22",
+   "rB1:1",
+   "yellow",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "rB1:2",
+   "ledB1:A",
+   "yellow",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "ledB1:C",
+   "esp:GND.1",
+   "black",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "esp:D4",
+   "rB2:1",
+   "green",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "rB2:2",
+   "ledB2:A",
+   "green",
+   [
+    "v0"
+   ]
+  ],
+  [
+   "ledB2:C",
+   "esp:GND.1",
+   "black",
+   [
+    "v0"
+   ]
+  ]
+ ],
+ "dependencies": {}
+}
